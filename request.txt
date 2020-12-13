@@ -1,0 +1,18 @@
+SELECT row_to_json(fc) FROM (SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) as features FROM (SELECT 'Feature' As type, ST_AsGeoJson(lg.location)::json As geometry, row_to_json((record_id, record_date, decibels)) As properties FROM pi_noisess As lg) As f ) As fc;
+
+
+SELECT row_to_json(fc) FROM (SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) as features FROM (SELECT 'Feature' As type, ST_AsGeoJson(lg.location)::json As geometry, row_to_json((record_id, record_date, decibels)) As properties FROM pi_noises As lg WHERE ST_DWithin(location, ST_MakePoint(40.419426323735635,-3.691813945770264)::geography, 600) ) As f ) As fc;
+
+SELECT row_to_json(fc) FROM (SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) as features FROM (SELECT 'Feature' As type, ST_AsGeoJson(lg.location)::json As geometry, json_build_object('id', record_id, 'date', record_date, 'decibels', decibels) As properties FROM pi_noises As lg WHERE ST_DWithin(location, ST_MakePoint(40.419426323735635,-3.691813945770264)::geography, 600) ) As f ) As fc;
+
+http://localhost:3001/data/40.419606020849834&-3.691642284393311
+
+http://localhost:3001/data?lat=40.419606020849834&lng=-3.691642284393311
+
+./cloud_sql_proxy -instances=iconic-parsec-293114:europe-west1:pi-project-db=tcp:4000 -credential_file=key.json
+
+psql -p 4000 "host=127.0.0.1 sslmode=disable dbname=pi-db user=postgres"
+
+"SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) as features FROM (SELECT 'Feature' As type, ST_AsGeoJson(lg.location)::json As geometry, json_build_object('id', record_id, 'date', TO_CHAR(record_date, 'HH24:MI:SS  -  dd mon yyyy'), 'decibels', decibels) As properties FROM pi_noises As lg ) As f;"
+
+"SELECT 'FeatureCollection' As type, array_to_json(array_agg(f)) as features FROM (SELECT 'Feature' As type, ST_AsGeoJson(lg.location)::json As geometry, json_build_object('id', record_id, 'date', TO_CHAR(record_date, 'HH24:MI:SS  -  dd mon yyyy'), 'decibels', decibels) As properties FROM pi_noises As lg WHERE ST_DWithin(location, ST_MakePoint(" + lat + "," + lng + ")::geography, " + radius + ") ) As f;"

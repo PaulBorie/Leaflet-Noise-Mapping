@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Geocoding control</title>
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+
+  <!-- Load Leaflet from CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+    crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+    integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+    crossorigin=""></script>
+
+  <!-- Load Esri Leaflet from CDN -->
+  <script src="https://unpkg.com/esri-leaflet@2.5.1/dist/esri-leaflet.js"
+    integrity="sha512-q7X96AASUF0hol5Ih7AeZpRF6smJS55lcvy+GLWzJfZN+31/BQ8cgNx2FGF+IQSA4z2jHwB20vml+drmooqzzQ=="
+    crossorigin=""></script>
+
+  <!-- Load Esri Leaflet Geocoder from CDN -->
+  <link rel="stylesheet" href="https://unpkg.com/esri-leaflet-geocoder@2.3.3/dist/esri-leaflet-geocoder.css"
+    integrity="sha512-IM3Hs+feyi40yZhDH6kV8vQMg4Fh20s9OzInIIAc4nx7aMYMfo+IenRUekoYsHZqGkREUgx0VvlEsgm7nCDW9g=="
+    crossorigin="">
+
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css"/>
+
+  <link rel="stylesheet" href="leaflet.zoomhome.css"/>
+
+  <script src="leaflet.zoomhome.min.js"></script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css"/>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css"/>
+
+  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+
+
+
+  <script src="https://unpkg.com/esri-leaflet-geocoder@2.3.3/dist/esri-leaflet-geocoder.js"
+    integrity="sha512-HrFUyCEtIpxZloTgEKKMq4RFYhxjJkCiF5sDxuAokklOeZ68U2NPfh4MFtyIVWlsKtVbK5GD2/JzFyAfvT5ejA=="
+    crossorigin=""></script>
+
+  <style>
+    body { margin:0; padding:0; }
+    #map { position: absolute; top:0; bottom:0; right:0; left:0; }
+
+    .info {
+    padding: 6px 8px;
+    font: 30px/32px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+    }
+    .info h4 {
+    margin: 0 0 5px;
+    color: #777;   
+    }
+
+  .legend {
+  font: 12px/14px Arial, Helvetica, sans-serif;
+  font-weight: bold;
+  color : black;
+  line-height: 18px;
+  color: #555;
+  }
+.legend i {
+
+    font: 12px/14px Arial, Helvetica, sans-serif;
+    color : black;
+    font-weight: bold;
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+  }
+  
+  </style>
+</head>
+<body>
+
+<h1>Noise live Map</h1>
+<h3>Search for a location to find the sound meas</h3>
+<div id="map"></div>
+
+<script>
+
+
+  var map = L.map('map', {zoomControl : false} ).setView([48.11258903, -1.65979385], 13);
+
+  var zoomHome = L.Control.zoomHome();
+  zoomHome.addTo(map);
+
+
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+
+  var searchControl = L.esri.Geocoding.geosearch({
+    useMapBounds : 'false',
+  }).addTo(map);
+  
+
+  var results = L.layerGroup().addTo(map);
+
+  var clustermarkers = L.markerClusterGroup();
+
+  map.addLayer(clustermarkers);
+
+
+  
+
+   function coordToLatLong(lnglat) {
+      var latlng = L.latLng(lnglat.lng, lnglat.lat);
+      return latlng;
+   }
+
+  searchControl.on('results', function (data) {
+    results.clearLayers();
+    for (var i = data.results.length - 1; i >= 0; i--) {
+      const result = data.results[i];
+      const marker = L.marker(result.latlng);
+      results.addLayer(marker);
+      marker.on("click", zoomIn)
+    }       
+  });
+
+  var datas;
+
+  function zoomIn(marker){
+    setTimeout(() => {
+      map.setView(marker.sourceTarget._latlng, 16);
+    }, 100);
+  }
+  
+  function showDecibels(){
+    setInterval(function() {getDatas()}, 1000);
+   }
+
+   showDecibels();
+
+  async function getDatas(){
+    
+    const api_url= "/datas";
+    const response = await fetch(api_url);
+    var jsondata = await response.json();
+    if(!(datas === undefined)){
+      datas.clearLayers();     
+    }
+    clustermarkers.clearLayers()
+    datas = L.geoJson( jsondata, {
+      style: function(feature) {
+        
+        return {        
+            radius: 20,  
+            fillColor: getColor(feature.properties.decibels),
+            color: getColor(feature.properties.decibels),
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 1
+          };
+      }, 
+      pointToLayer : function(geoJsonPoint, latlng) {
+        return L.circleMarker(coordToLatLong(latlng)).on("click", zoomIn);
+      },
+      onEachFeature: onEachFeature
+
+      })
+      clustermarkers.addLayer(datas)
+
+  }
+
+
+
+
+/////////////////////////Points Infos
+
+var info = L.control();
+
+
+function highlightFeature(e) {
+
+var layer = e.target;
+info.update(layer.feature.properties);
+layer.setStyle({
+    weight: 5,
+    color: '#666',
+    dashArray: '',
+    fillOpacity: 0.7
+});
+
+if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
+    layer.bringToFront();
+}
+}
+
+function resetHighlight(e) {
+info.update();
+datas.resetStyle(e.target);
+}
+
+function onEachFeature(feature, layer) {
+  var decibels = String(feature.properties.decibels + ' DbA');
+  layer.on({
+      mouseover: highlightFeature,
+      mouseout: resetHighlight,
+  });
+}
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.update();
+    return this._div;
+};
+
+// method that we will use to update the control based on feature properties passed
+info.update = function (props) {
+  var date;
+    if(props){
+      date = new Date(Date.parse(props.date + "Z"))   
+    }
+    this._div.innerHTML = '<h4>Decibels DbA measured </h4>' +  (props ?
+        '<b>' + props.name + '</b> <br/>  <b>' + formatDate(date) + '</b><br/> <b>' + props.decibels + ' DbA </b>'
+        : 'Hover a circle Marker');
+};
+
+info.addTo(map);
+
+function formatDate(date){
+  var h = addZero(date.getHours());
+  var m = addZero(date.getMinutes());
+  var s = addZero(date.getSeconds());
+  var day = addZero(date.getDate());
+  var month = addZero(date.getMonth());
+  var year = date.getFullYear();
+  stringdate = (h + ":" + m + ":" + s + " - " + day + "/" + month + "/" + year )
+  return stringdate;  
+}
+
+function addZero(i) {
+  if (i < 10) {
+    i = "0" + i;
+  }
+  return i;
+}
+
+
+  function getColor(d) {
+    return d > 140 ? '#A11152' : 
+           d > 130 ? '#D5176D' :
+           d > 120 ? '#E91A28' :
+           d > 110 ? '#EF4529' :
+           d > 100 ? '#F26E2A' :
+           d > 90  ? '#F5931D' :
+           d > 80  ? '#FEC10D' :
+           d > 70  ? '#FEE22C' :
+           d > 60  ? '#D7DE20' :
+           d > 50  ? '#B0C631' :
+           d > 40  ? '#74BE42' :
+           d > 30  ? '#23AD49' :
+           d > 20  ? '#00A783' :
+           d > 10  ? '#0098A8' :
+           d >= 0  ? '#007CA7' :
+                     '#FFFFFF';
+}
+
+////////////legend
+var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'info legend'),
+        grades = [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140],
+        labels = [];
+
+    // loop through our density intervals and generate a label with a colored square for each interval
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML +=
+            '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+            grades[i] + (grades[i + 1] ? ' &ndash; ' + grades[i + 1] + '<br>' : '+');
+    }
+
+    return div;
+};
+
+legend.addTo(map);
+
+
+
+</script>
+
+</body>
